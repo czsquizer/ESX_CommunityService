@@ -102,27 +102,39 @@ end)
 RegisterServerEvent('esx_communityservice:sendToCommunityService')
 AddEventHandler('esx_communityservice:sendToCommunityService', function(target, actions_count)
 
-	local identifier = GetPlayerIdentifiers(target)[1]
+	local tPlayer = ESX.GetPlayerFromId(tonumber(target))
 
-	MySQL.Async.fetchAll('SELECT * FROM communityservice WHERE identifier = @identifier', {
-		['@identifier'] = identifier
-	}, function(result)
-		if result[1] then
-			MySQL.Async.execute('UPDATE communityservice SET actions_remaining = @actions_remaining WHERE identifier = @identifier', {
-				['@identifier'] = identifier,
-				['@actions_remaining'] = actions_count
-			})
+	if tPlayer then
+		local xPlayer = ESX.GetPlayerFromId(source)
+
+		if xPlayer["job"]["name"] == "police" or xPlayer["job"]["name"] == "sheriff" then
+
+			MySQL.Async.fetchAll('SELECT * FROM communityservice WHERE identifier = @identifier', {
+				['@identifier'] = identifier
+			}, function(result)
+				if result[1] then
+					MySQL.Async.execute('UPDATE communityservice SET actions_remaining = @actions_remaining WHERE identifier = @identifier', {
+						['@identifier'] = identifier,
+						['@actions_remaining'] = actions_count
+					})
+				else
+					MySQL.Async.execute('INSERT INTO communityservice (identifier, actions_remaining) VALUES (@identifier, @actions_remaining)', {
+						['@identifier'] = identifier,
+						['@actions_remaining'] = actions_count
+					})
+				end
+			end)
+
+			TriggerClientEvent('chat:addMessage', -1, { args = { _U('judge'), _U('comserv_msg', GetPlayerName(target), actions_count) }, color = { 147, 196, 109 } })
+			TriggerClientEvent('esx_policejob:unrestrain', target)
+			TriggerClientEvent('esx_communityservice:inCommunityService', target, actions_count)
+
 		else
-			MySQL.Async.execute('INSERT INTO communityservice (identifier, actions_remaining) VALUES (@identifier, @actions_remaining)', {
-				['@identifier'] = identifier,
-				['@actions_remaining'] = actions_count
-			})
+			-- Put here an event for banning the source player
+			-- because most likely he is a cheater and is
+			-- trying to fuc* up your community works system
 		end
-	end)
-
-	TriggerClientEvent('chat:addMessage', -1, { args = { _U('judge'), _U('comserv_msg', GetPlayerName(target), actions_count) }, color = { 147, 196, 109 } })
-	TriggerClientEvent('esx_policejob:unrestrain', target)
-	TriggerClientEvent('esx_communityservice:inCommunityService', target, actions_count)
+	end
 end)
 
 
